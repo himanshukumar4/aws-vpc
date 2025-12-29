@@ -52,3 +52,87 @@ variable "single_nat_gateway" {
   default     = false
   description = "Use a single NAT Gateway for all AZs (cost optimization)"
 }
+
+# RDS Aurora Variables
+variable "enable_rds" {
+  type        = bool
+  default     = true
+  description = "Enable RDS Aurora database deployment"
+}
+
+variable "rds_engine_version" {
+  type        = string
+  default     = "15.4"
+  description = "Aurora PostgreSQL engine version"
+}
+
+variable "rds_database_name" {
+  type        = string
+  description = "Name of the default database"
+}
+
+variable "rds_master_username" {
+  type        = string
+  sensitive   = true
+  description = "Master username for the database"
+}
+
+variable "rds_master_password" {
+  type        = string
+  sensitive   = true
+  description = "Master password for the database"
+}
+
+variable "rds_instance_class" {
+  type        = string
+  default     = "db.t3.medium"
+  description = "Instance class for Aurora nodes"
+}
+
+variable "rds_backup_retention" {
+  type        = number
+  default     = 7
+  description = "Number of days to retain backups"
+}
+
+variable "rds_multi_az" {
+  type        = bool
+  default     = true
+  description = "Enable Multi-AZ deployment"
+}
+
+variable "rds_publicly_accessible" {
+  type        = bool
+  default     = false
+  description = "Make the database publicly accessible"
+}
+
+variable "rds_skip_final_snapshot" {
+  type        = bool
+  default     = false
+  description = "Skip final snapshot when destroying cluster"
+}
+
+variable "rds_enable_cloudwatch_logs" {
+  type        = bool
+  default     = true
+  description = "Enable CloudWatch log exports"
+}
+
+variable "rds_allowed_cidr_blocks" {
+  type        = list(string)
+  default     = []
+  description = "CIDR blocks allowed to connect to the database"
+}
+
+variable "rds_enable_enhanced_monitoring" {
+  type        = bool
+  default     = true
+  description = "Enable enhanced monitoring"
+}
+
+variable "rds_monitoring_interval" {
+  type        = number
+  default     = 60
+  description = "Enhanced monitoring interval in seconds"
+}

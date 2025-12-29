@@ -11,3 +11,20 @@ output "vpc_resource_outputs" {
     nat_eip_addresses   = module.vpc_layer.nat_eip_addresses
   }
 }
+
+output "rds_resource_outputs" {
+  description = "Aurora RDS cluster and instance outputs"
+  sensitive   = true
+  value = {
+    cluster_id           = module.rds_layer.cluster_id
+    cluster_endpoint     = module.rds_layer.cluster_endpoint
+    reader_endpoint      = module.rds_layer.cluster_reader_endpoint
+    database_name        = module.rds_layer.database_name
+    master_username      = module.rds_layer.master_username
+    instance_endpoints   = module.rds_layer.instance_endpoints
+    security_group_id    = module.rds_layer.security_group_id
+    db_subnet_group_name = module.rds_layer.db_subnet_group_name
+    port                 = module.rds_layer.port
+    arn                  = module.rds_layer.arn
+  }
+}
