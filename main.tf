@@ -35,6 +35,11 @@ module "rds_layer" {
   allowed_cidr_blocks        = var.rds_allowed_cidr_blocks
   enable_enhanced_monitoring = var.rds_enable_enhanced_monitoring
   monitoring_interval        = var.rds_monitoring_interval
+  enable_global_database     = var.rds_enable_global_database
+  primary_region             = var.rds_primary_region
+  secondary_regions          = var.rds_secondary_regions
+  secondary_vpc_ids          = var.rds_secondary_vpc_ids
+  secondary_subnet_ids       = var.rds_secondary_subnet_ids
 
   depends_on = [module.vpc_layer]
 }

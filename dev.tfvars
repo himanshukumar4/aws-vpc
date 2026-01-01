@@ -27,3 +27,10 @@ rds_enable_cloudwatch_logs      = true
 rds_allowed_cidr_blocks         = [] # Add app tier CIDR blocks as needed
 rds_enable_enhanced_monitoring  = true
 rds_monitoring_interval         = 60
+
+# RDS Global Database Configuration (Optional - set to true for multi-region)
+rds_enable_global_database = false
+rds_primary_region         = "us-east-1"
+rds_secondary_regions      = [] # e.g., ["us-west-2", "eu-west-1"] for failover regions
+rds_secondary_vpc_ids      = {} # e.g., { "us-west-2" = "vpc-xxxxx", "eu-west-1" = "vpc-yyyyy" }
+rds_secondary_subnet_ids   = {} # e.g., { "us-west-2" = ["subnet-xxx", "subnet-yyy"], "eu-west-1" = ["subnet-aaa", "subnet-bbb"] }

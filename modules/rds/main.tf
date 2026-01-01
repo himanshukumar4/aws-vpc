@@ -1,3 +1,11 @@
+# Aurora Global Database Cluster
+resource "aws_rds_global_cluster" "aurora_global" {
+  count                     = local.enabled && var.enable_global_database ? 1 : 0
+  global_cluster_identifier = "${local.id}-global-cluster"
+  engine                    = "aurora-postgresql"
+  engine_version            = var.engine_version
+}
+
 # RDS DB Subnet Group
 resource "aws_db_subnet_group" "aurora_subnet_group" {
   count      = local.enabled ? 1 : 0
@@ -64,15 +72,16 @@ resource "aws_iam_role_policy_attachment" "aurora_monitoring_policy" {
   policy_arn         = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
 }
 
-# Aurora RDS Cluster
+# Aurora RDS Cluster (Primary)
 resource "aws_rds_cluster" "aurora_cluster" {
   count                            = local.enabled ? 1 : 0
   cluster_identifier               = "${local.id}-aurora-cluster"
   engine                           = "aurora-postgresql"
   engine_version                   = var.engine_version
-  database_name                    = var.database_name
-  master_username                  = var.master_username
-  master_password                  = var.master_password
+  database_name                    = var.enable_global_database ? null : var.database_name
+  master_username                  = var.enable_global_database ? null : var.master_username
+  master_password                  = var.enable_global_database ? null : var.master_password
+  global_cluster_identifier        = var.enable_global_database ? aws_rds_global_cluster.aurora_global[0].id : null
   db_subnet_group_name             = aws_db_subnet_group.aurora_subnet_group[0].name
   vpc_security_group_ids           = [aws_security_group.aurora_sg[0].id]
   backup_retention_period          = var.backup_retention_period
@@ -110,6 +119,97 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
   tags = merge(local.tags, {
     Name = "${local.id}-aurora-instance-${count.index + 1}"
   })
+}
+
+# Secondary DB Subnet Groups (for Global Database)
+resource "aws_db_subnet_group" "secondary_subnet_group" {
+  for_each   = local.enabled && var.enable_global_database ? toset(var.secondary_regions) : toset([])
+  name       = "${local.id}-${each.value}-subnet-group"
+  subnet_ids = var.secondary_subnet_ids[each.value]
+
+  tags = merge(local.tags, {
+    Name = "${local.id}-${each.value}-subnet-group"
+  })
+}
+
+# Secondary Security Groups (for Global Database)
+resource "aws_security_group" "secondary_sg" {
+  for_each    = local.enabled && var.enable_global_database ? toset(var.secondary_regions) : toset([])
+  name        = "${local.id}-${each.value}-aurora-sg"
+  description = "Security group for Aurora database in ${each.value}"
+  vpc_id      = var.secondary_vpc_ids[each.value]
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.aurora_sg[0].id]
+    description     = "PostgreSQL from primary region"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound traffic"
+  }
+
+  tags = merge(local.tags, {
+    Name = "${local.id}-${each.value}-aurora-sg"
+  })
+
+  depends_on = [aws_security_group.aurora_sg]
+}
+
+# Secondary Aurora Clusters (read-only replicas)
+resource "aws_rds_cluster" "secondary_cluster" {
+  for_each               = local.enabled && var.enable_global_database ? toset(var.secondary_regions) : toset([])
+  cluster_identifier     = "${local.id}-${each.value}-aurora-cluster"
+  engine                 = "aurora-postgresql"
+  engine_version         = var.engine_version
+  global_cluster_identifier = aws_rds_global_cluster.aurora_global[0].id
+  db_subnet_group_name   = aws_db_subnet_group.secondary_subnet_group[each.value].name
+  vpc_security_group_ids = [aws_security_group.secondary_sg[each.value].id]
+  skip_final_snapshot    = var.skip_final_snapshot
+  backup_retention_period = var.backup_retention_period
+  storage_encrypted      = true
+
+  tags = merge(local.tags, {
+    Name = "${local.id}-${each.value}-aurora-cluster"
+  })
+
+  depends_on = [aws_rds_cluster.aurora_cluster]
+}
+
+# Secondary Aurora Instances (read-only replicas)
+resource "aws_rds_cluster_instance" "secondary_instances" {
+  for_each = local.enabled && var.enable_global_database ? {
+    for region_instance in flatten([
+      for region in var.secondary_regions : [
+        for i in range(2) : "${region}-${i + 1}"
+      ]
+    ]) : region_instance => {
+      region = split("-", region_instance)[0]
+      index  = tonumber(split("-", region_instance)[1]) - 1
+    }
+  } : {}
+  
+  identifier         = "${local.id}-${each.value.region}-aurora-instance-${each.value.index + 1}"
+  cluster_identifier = aws_rds_cluster.secondary_cluster[each.value.region].id
+  instance_class     = var.db_instance_class
+  engine              = "aurora-postgresql"
+  engine_version      = var.engine_version
+  publicly_accessible = var.publicly_accessible
+
+  performance_insights_enabled            = true
+  performance_insights_retention_period   = 7
+
+  tags = merge(local.tags, {
+    Name = "${local.id}-${each.value.region}-aurora-instance-${each.value.index + 1}"
+  })
+
+  depends_on = [aws_rds_cluster.secondary_cluster]
 }
 
 # CloudWatch Log Group for Aurora

@@ -13,6 +13,26 @@ output "cluster_reader_endpoint" {
   description = "Aurora cluster reader endpoint"
 }
 
+output "global_cluster_id" {
+  value       = try(aws_rds_global_cluster.aurora_global[0].id, "")
+  description = "Aurora Global Database cluster ID"
+}
+
+output "global_cluster_arn" {
+  value       = try(aws_rds_global_cluster.aurora_global[0].arn, "")
+  description = "Aurora Global Database cluster ARN"
+}
+
+output "secondary_cluster_ids" {
+  value       = { for region, cluster in aws_rds_cluster.secondary_cluster : region => cluster.id }
+  description = "Map of secondary region to cluster ID"
+}
+
+output "secondary_cluster_endpoints" {
+  value       = { for region, cluster in aws_rds_cluster.secondary_cluster : region => cluster.endpoint }
+  description = "Map of secondary region to reader endpoint (read-only)"
+}
+
 output "database_name" {
   value       = try(aws_rds_cluster.aurora_cluster[0].database_name, "")
   description = "Name of the default database"

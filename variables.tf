@@ -136,3 +136,33 @@ variable "rds_monitoring_interval" {
   default     = 60
   description = "Enhanced monitoring interval in seconds"
 }
+
+# RDS Global Database Variables
+variable "rds_enable_global_database" {
+  type        = bool
+  default     = false
+  description = "Enable Aurora Global Database for cross-region replication"
+}
+
+variable "rds_primary_region" {
+  type        = string
+  description = "Primary AWS region for the RDS cluster"
+}
+
+variable "rds_secondary_regions" {
+  type        = list(string)
+  default     = []
+  description = "List of secondary AWS regions for Global Database read replicas"
+}
+
+variable "rds_secondary_vpc_ids" {
+  type        = map(string)
+  default     = {}
+  description = "Map of secondary region to VPC ID (required if enable_global_database=true)"
+}
+
+variable "rds_secondary_subnet_ids" {
+  type        = map(list(string))
+  default     = {}
+  description = "Map of secondary region to list of private subnet IDs"
+}
